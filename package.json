@@ -1,0 +1,16 @@
+{
+  "name": "project-luna",
+  "version": "1.0.0",
+  "description": "// Access next sibling element\r const sibling = bookList.nextElementSibling;",
+  "main": "favorits.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "sass": "sass --watch source/styles.scss:public/styles.css"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "sass": "^1.83.0"
+  }
+}
