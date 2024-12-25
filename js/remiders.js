@@ -1,6 +1,6 @@
 // Select the list and form
 const list = document.querySelector('#list ul');
-const addForm = document.forms['add'];
+const addForm = document.getElementById('add');
 
 // Load reminders from local storage on page load
 loadReminders();
@@ -10,7 +10,7 @@ addForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const value = addForm.querySelector('input[type="text"]').value.trim();
 
-    if (value) {
+    if (value!== '') {
         // Create a new list item
         const li = createReminderItem(value);
         list.appendChild(li);
@@ -39,6 +39,7 @@ list.addEventListener('click', (e) => {
     }
 
     // Done button functionality
+
     if (e.target.className === 'done') {
         toggleDone(e.target);
     }
@@ -72,12 +73,12 @@ function createReminderItem(value) {
     const nameSpan = document.createElement('span');
     nameSpan.className = 'name';
     nameSpan.textContent = value;
-    nameSpan.title = "Double-click to edit this reminder"; // Tooltip for user instruction
+    nameSpan.title = "Double-click to edit this title"; // Tooltip for user instruction
 
     // Add a hint below the goal name
     const hintSpan = document.createElement('span');
     hintSpan.className = 'edit-hint';
-    hintSpan.textContent = ' (Double-click to edit reminder)';
+    hintSpan.textContent = '  (Double-click to edit title)';
 
     // Append the hintSpan to the li
     li.appendChild(nameSpan);

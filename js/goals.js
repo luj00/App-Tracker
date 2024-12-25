@@ -1,6 +1,6 @@
 // Select the goal list and form
 const list = document.querySelector('#list ul');
-const addForm = document.forms['add'];
+const addForm = document.getElementById('add');
 
 // Load goals from local storage on page load
 loadGoals();
@@ -8,7 +8,7 @@ loadGoals();
 // Add new goal on form submission
 addForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const value = addForm.querySelector('input[type="text"]').value.trim();
+    const value = addForm.querySelector('input[type="text"]').value.trim(); 
 
     if (value !== '') {
         // Create a new list item
@@ -26,20 +26,20 @@ addForm.addEventListener('submit', (e) => {
 });
 
 list.addEventListener('click', (e) => {
-    // Find the <li> container for the clicked element
-    const li = e.target.closest('li');
-    if (!li) return; // Exit if the clicked element is not inside an <li>
+    // Find the <li> container for the cicked listItem
+    const listItem = e.target.closest('li');
+    if (!listItem) return; // Exit if the clicked listItem is not inside an <li>
 
     // Check if the clicked element is a button or has a class that we care about
     if (e.target.classList.contains('delete')) {
         if (confirm('Are you sure you want to delete this goal?')) {
-            li.remove();
+            listItem.remove();
             saveGoals(); // Update local storage
         }
     } else if (e.target.classList.contains('done')) {
         toggleDone(e.target);
     } else if (e.target.classList.contains('note-toggle')) {
-        toggleNoteVisibility(li, e.target);
+        toggleNoteVisibility(listItem, e.target);
     }
 });
 
@@ -67,12 +67,12 @@ function createGoalItem(value) {
     const nameSpan = document.createElement('span');
     nameSpan.className = 'name';
     nameSpan.textContent = value;
-    nameSpan.title = "Double-click to edit this goal"; // Tooltip for user instruction
+    nameSpan.title = "Double-click to edit this title"; // Tooltip for user instruction
 
     // Add a hint below the goal name
     const hintSpan = document.createElement('span');
     hintSpan.className = 'edit-hint';
-    hintSpan.textContent = ' (Double-click to edit goal)';
+    hintSpan.textContent = '    (Double-click to edit title)';
 
     // Create the delete button
     const deleteSpan = document.createElement('span');
