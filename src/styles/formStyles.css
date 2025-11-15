@@ -293,3 +293,6 @@ h1, h2 {
     width: 100%; /* Ensures the <a> spans the entire width of the <li> */
     height: 100%; /* Ensures the <a> spans the entire height of the <li> */
 }
+#search {
+    color: black !important; /* Text color forced to black */
+}

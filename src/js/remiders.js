@@ -1,40 +1,57 @@
 // Import Firebase
 import { database } from './firebase-config.js';
-import { ref, set, get, push, remove, onValue } from 'firebase/database';
+import { ref, set, push, remove, onValue } from 'firebase/database';
 
 // Select the list and form
 const list = document.querySelector('#list ul');
 const addForm = document.getElementById('add');
+const searchInput = document.querySelector('#search input'); // ADD THIS
+
+// Store reminders data for search
+let remindersData = {};
 
 // Load reminders from Firebase on page load
 loadReminders();
+
+// Add search functionality
+if (searchInput) {
+    searchInput.addEventListener('input', () => {
+        renderListWithSearch(remindersData);
+    });
+}
 
 // Add new reminder on form submission
 addForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const value = addForm.querySelector('input[type="text"]').value.trim();
 
-    if (value !== '') {
-        try {
-            // Create a new reminder in Firebase
-            const remindersRef = ref(database, 'reminders');
-            const newReminderRef = push(remindersRef);
-            
-            await set(newReminderRef, {
-                name: value,
-                isDone: '✖️',
-                note: '',
-                timestamp: Date.now()
-            });
-
-            // Clear the input field
-            addForm.querySelector('input[type="text"]').value = '';
-        } catch (error) {
-            console.error('Error adding reminder:', error);
-            alert('Failed to add reminder. Please try again.');
-        }
-    } else {
+    if (value === '') {
         alert('Please enter your reminder!');
+        return;
+    }
+
+    if (value.length > 65) {
+        alert('Reminder title is too long! Maximum 65 characters allowed.');
+        return;
+    }
+
+    try {
+        // Create a new reminder in Firebase
+        const remindersRef = ref(database, 'reminders');
+        const newReminderRef = push(remindersRef);
+        
+        await set(newReminderRef, {
+            name: value,
+            isDone: '✖️',
+            note: '',
+            timestamp: Date.now()
+        });
+
+        // Clear the input field
+        addForm.querySelector('input[type="text"]').value = '';
+    } catch (error) {
+        console.error('Error adding reminder:', error);
+        alert('Failed to add reminder. Please try again.');
     }
 });
 
@@ -106,7 +123,6 @@ function createReminderItem(reminderId, reminderData) {
 
     const hintSpan = document.createElement('span');
     hintSpan.className = 'edit-hint';
-    hintSpan.textContent = '  (Double-click to edit title)';
 
     li.appendChild(nameSpan);
     li.appendChild(hintSpan);
@@ -165,26 +181,94 @@ function toggleNoteVisibility(li, noteToggle) {
 function loadReminders() {
     const remindersRef = ref(database, 'reminders');
     
-    onValue(remindersRef, (snapshot) => {
-        // Clear the list
-        list.innerHTML = '';
-        
-        const reminders = snapshot.val();
-        if (!reminders) {
-            console.log('No reminders to load.');
-            return;
+    // Show loading message
+    list.innerHTML = '<li style="text-align: center; color: #999;">Loading reminders...</li>';
+
+    // Check localStorage for cached reminders
+    const cachedReminders = localStorage.getItem('reminders');
+    if (cachedReminders) {
+        try {
+            const parsed = JSON.parse(cachedReminders);
+            remindersData = parsed;
+            // Display cached reminders immediately
+            renderAllReminders(remindersData);
+        } catch (error) {
+            console.error('Error parsing cached reminders:', error);
         }
+    }
 
-        console.log('Loading reminders from Firebase:', reminders);
-
-        // Convert object to array and create list items
-        Object.entries(reminders).forEach(([reminderId, reminderData]) => {
-            const li = createReminderItem(reminderId, reminderData);
-            list.appendChild(li);
-        });
+    // Listen to Firebase updates
+    onValue(remindersRef, (snapshot) => {
+        remindersData = snapshot.val() || {};
+        
+        // Save to localStorage for next load
+        localStorage.setItem('reminders', JSON.stringify(remindersData));
+        
+        // If search is active, use filtered view
+        if (searchInput && searchInput.value.trim()) {
+            renderListWithSearch(remindersData);
+        } else {
+            // Otherwise show all reminders
+            renderAllReminders(remindersData);
+        }
     }, (error) => {
         console.error('Error loading reminders:', error);
+        list.innerHTML = '<li style="color: red;">Error loading reminders. Please refresh.</li>';
     });
+}
+
+// Function to render all reminders
+function renderAllReminders(reminders) {
+    list.innerHTML = '';
+    
+    if (!reminders || Object.keys(reminders).length === 0) {
+        list.innerHTML = '<li style="text-align: center; color: #999;">No reminders yet. Add your first reminder!</li>';
+        return;
+    }
+
+    Object.entries(reminders).forEach(([reminderId, reminderData]) => {
+        const li = createReminderItem(reminderId, reminderData);
+        list.appendChild(li);
+    });
+}
+
+// Function to render filtered list based on search
+function renderListWithSearch(data) {
+    const query = searchInput.value.toLowerCase().trim();
+    list.innerHTML = '';
+
+    // If no data, show a message
+    if (!data || Object.keys(data).length === 0) {
+        const noDataMsg = document.createElement('li');
+        noDataMsg.textContent = 'No reminders found.';
+        noDataMsg.style.textAlign = 'center';
+        noDataMsg.style.color = '#999';
+        list.appendChild(noDataMsg);
+        return;
+    }
+
+    let matchCount = 0;
+
+    Object.entries(data).forEach(([id, itemData]) => {
+        const name = (itemData.name || '').toLowerCase();
+        const note = (itemData.note || '').toLowerCase();
+
+        // Show all items if query is empty, otherwise filter
+        if (!query || name.includes(query) || note.includes(query)) {
+            const li = createReminderItem(id, itemData);
+            list.appendChild(li);
+            matchCount++;
+        }
+    });
+
+    // Show "no results" message if no matches
+    if (matchCount === 0 && query) {
+        const noResults = document.createElement('li');
+        noResults.textContent = `No results found for "${searchInput.value}"`;
+        noResults.style.textAlign = 'center';
+        noResults.style.color = '#999';
+        list.appendChild(noResults);
+    }
 }
 
 // Function to toggle the done state of a reminder
@@ -219,12 +303,21 @@ function editReminderText(nameSpan) {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = currentText;
+    input.maxLength = 65; // Add character limit
 
     nameSpan.replaceWith(input);
     input.focus();
 
     input.addEventListener('blur', async () => {
         const newValue = input.value.trim();
+        
+        if (newValue.length > 65) {
+            alert('Reminder title is too long! Maximum 65 characters allowed.');
+            nameSpan.textContent = currentText;
+            input.replaceWith(nameSpan);
+            return;
+        }
+        
         nameSpan.textContent = newValue || currentText;
         input.replaceWith(nameSpan);
 

@@ -1,13 +1,24 @@
 // Import Firebase
 import { database } from './firebase-config.js';
-import { ref, set, get, push, remove, onValue } from 'firebase/database';
+import { ref, set, push, remove, onValue } from 'firebase/database';
 
 // Select the goal list and form
 const list = document.querySelector('#list ul');
 const addForm = document.getElementById('add');
+const searchInput = document.querySelector('#search input'); // ADD THIS
+
+// Store goals data for search
+let goalsData = {};
 
 // Load goals from Firebase on page load
 loadGoals();
+
+// Add search functionality
+if (searchInput) {
+    searchInput.addEventListener('input', () => {
+        renderListWithSearch(goalsData);
+    });
+}
 
 // Add new goal on form submission
 addForm.addEventListener('submit', async (e) => {
@@ -16,7 +27,6 @@ addForm.addEventListener('submit', async (e) => {
 
     if (value !== '') {
         try {
-            // Create a new goal in Firebase
             const goalsRef = ref(database, 'goals');
             const newGoalRef = push(goalsRef);
             
@@ -27,7 +37,6 @@ addForm.addEventListener('submit', async (e) => {
                 timestamp: Date.now()
             });
 
-            // Clear the input field
             addForm.querySelector('input[type="text"]').value = '';
         } catch (error) {
             console.error('Error adding goal:', error);
@@ -98,7 +107,6 @@ function createGoalItem(goalId, goalData) {
 
     const hintSpan = document.createElement('span');
     hintSpan.className = 'edit-hint';
-    hintSpan.textContent = '    (Double-click to edit title)';
 
     const deleteSpan = document.createElement('span');
     deleteSpan.className = 'delete';
@@ -151,26 +159,94 @@ function toggleNoteVisibility(li, noteToggle) {
 function loadGoals() {
     const goalsRef = ref(database, 'goals');
     
-    onValue(goalsRef, (snapshot) => {
-        // Clear the list
-        list.innerHTML = '';
-        
-        const goals = snapshot.val();
-        if (!goals) {
-            console.log('No goals to load.');
-            return;
+    // Show loading message
+    list.innerHTML = '<li style="text-align: center; color: #999;">Loading goals...</li>';
+
+    // Check localStorage for cached goals
+    const cachedGoals = localStorage.getItem('goals');
+    if (cachedGoals) {
+        try {
+            const parsed = JSON.parse(cachedGoals);
+            goalsData = parsed;
+            // Display cached goals immediately
+            renderAllGoals(goalsData);
+        } catch (error) {
+            console.error('Error parsing cached goals:', error);
         }
+    }
 
-        console.log('Loading goals from Firebase:', goals);
-
-        // Convert object to array and sort by timestamp
-        Object.entries(goals).forEach(([goalId, goalData]) => {
-            const li = createGoalItem(goalId, goalData);
-            list.appendChild(li);
-        });
+    // Listen to Firebase updates
+    onValue(goalsRef, (snapshot) => {
+        goalsData = snapshot.val() || {};
+        
+        // Save to localStorage for next load
+        localStorage.setItem('goals', JSON.stringify(goalsData));
+        
+        // If search is active, use filtered view
+        if (searchInput && searchInput.value.trim()) {
+            renderListWithSearch(goalsData);
+        } else {
+            // Otherwise show all goals
+            renderAllGoals(goalsData);
+        }
     }, (error) => {
         console.error('Error loading goals:', error);
+        list.innerHTML = '<li style="color: red;">Error loading goals. Please refresh.</li>';
     });
+}
+
+// Function to render all goals
+function renderAllGoals(goals) {
+    list.innerHTML = '';
+    
+    if (!goals || Object.keys(goals).length === 0) {
+        list.innerHTML = '<li style="text-align: center; color: #999;">No goals yet. Add your first goal!</li>';
+        return;
+    }
+
+    Object.entries(goals).forEach(([goalId, goalData]) => {
+        const li = createGoalItem(goalId, goalData);
+        list.appendChild(li);
+    });
+}
+
+// Function to render filtered list based on search
+function renderListWithSearch(data) {
+    const query = searchInput.value.toLowerCase().trim();
+    list.innerHTML = '';
+
+    // If no data, show a message
+    if (!data || Object.keys(data).length === 0) {
+        const noDataMsg = document.createElement('li');
+        noDataMsg.textContent = 'No goals found.';
+        noDataMsg.style.textAlign = 'center';
+        noDataMsg.style.color = '#999';
+        list.appendChild(noDataMsg);
+        return;
+    }
+
+    let matchCount = 0;
+
+    Object.entries(data).forEach(([id, itemData]) => {
+        const name = (itemData.name || '').toLowerCase();
+        const note = (itemData.note || '').toLowerCase();
+
+        // Show all items if query is empty, otherwise filter
+        if (!query || name.includes(query) || note.includes(query)) {
+            const li = createGoalItem(id, itemData);
+            list.appendChild(li);
+            matchCount++;
+        }
+    });
+
+    // Show "no results" message if no matches
+    if (matchCount === 0 && query) {
+        const noResults = document.createElement('li');
+        noResults.textContent = `No results found for "${searchInput.value}"`;
+        noResults.style.textAlign = 'center';
+        noResults.style.color = '#999';
+        list.appendChild(noResults);
+    }
 }
 
 // Function to toggle the done state of a goal
@@ -210,12 +286,21 @@ function editGoalText(nameSpan) {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = currentText;
+    input.maxLength = 65; // Add character limit
 
     nameSpan.replaceWith(input);
     input.focus();
     
     input.addEventListener('blur', async () => {
         const newValue = input.value.trim();
+        
+        if (newValue.length > 65) {
+            alert('Goal title is too long! Maximum 65 characters allowed.');
+            nameSpan.textContent = currentText;
+            input.replaceWith(nameSpan);
+            return;
+        }
+        
         nameSpan.textContent = newValue || currentText;
         nameSpan.className = 'name';
         input.replaceWith(nameSpan);
