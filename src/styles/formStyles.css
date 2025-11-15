@@ -88,11 +88,11 @@ h1, h2 {
 }
 
 .delete {
-    background: #7b6491;
+    background: #e54820;
 }
 
 .delete:hover {
-    background: #c00000; /* Darker red on hover */
+    background: #e87878; /* Darker red on hover */
 }
 
 .done {

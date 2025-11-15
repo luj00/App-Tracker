@@ -30,8 +30,8 @@ addForm.addEventListener('submit', async (e) => {
         return;
     }
 
-    if (value.length > 65) {
-        alert('Reminder title is too long! Maximum 65 characters allowed.');
+    if (value.length > 60) {
+        alert('Reminder title is too long! Maximum 60 characters allowed.');
         return;
     }
 
@@ -93,22 +93,21 @@ list.addEventListener('dblclick', (e) => {
     }
 });
 
-// Event listener for tracking changes in the note textarea
-list.addEventListener('input', async (e) => {
-    if (e.target.className === 'note') {
-        const listItem = e.target.closest('li');
-        const reminderId = listItem.dataset.id;
-        const noteValue = e.target.value;
-        
-        try {
-            const reminderRef = ref(database, `reminders/${reminderId}/note`);
-            await set(reminderRef, noteValue);
-            console.log('Note updated:', noteValue);
-        } catch (error) {
-            console.error('Error updating note:', error);
-        }
+list.addEventListener('blur', async (e) => {
+    if (!e.target.classList.contains('note')) return;
+    const listItem = e.target.closest('li');
+    const goalId = listItem.dataset.id;
+    const noteValue = e.target.value;
+
+    try {
+        const goalRef = ref(database, `goals/${goalId}/note`);
+        await set(goalRef, noteValue);
+        console.log('Note updated:', noteValue);
+    } catch (error) {
+        console.error('Error updating note:', error);
     }
-});
+}, true); // true = use capture so blur works properly
+
 
 // Function to create a reminder item
 function createReminderItem(reminderId, reminderData) {
@@ -303,7 +302,7 @@ function editReminderText(nameSpan) {
     const input = document.createElement('input');
     input.type = 'text';
     input.value = currentText;
-    input.maxLength = 65; // Add character limit
+    input.maxLength = 60; // Add character limit
 
     nameSpan.replaceWith(input);
     input.focus();
@@ -311,8 +310,8 @@ function editReminderText(nameSpan) {
     input.addEventListener('blur', async () => {
         const newValue = input.value.trim();
         
-        if (newValue.length > 65) {
-            alert('Reminder title is too long! Maximum 65 characters allowed.');
+        if (newValue.length > 60) {
+            alert('Reminder title is too long! Maximum 60 characters allowed.');
             nameSpan.textContent = currentText;
             input.replaceWith(nameSpan);
             return;

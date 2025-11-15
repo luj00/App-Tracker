@@ -5,7 +5,7 @@ import { ref, set, push, remove, onValue } from 'firebase/database';
 // Select the goal list and form
 const list = document.querySelector('#list ul');
 const addForm = document.getElementById('add');
-const searchInput = document.querySelector('#search input'); // ADD THIS
+const searchInput = document.querySelector('#search input'); // For search functionality
 
 // Store goals data for search
 let goalsData = {};
@@ -23,37 +23,45 @@ if (searchInput) {
 // Add new goal on form submission
 addForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const value = addForm.querySelector('input[type="text"]').value.trim(); 
+    const value = addForm.querySelector('input[type="text"]').value.trim();
 
-    if (value !== '') {
-        try {
-            const goalsRef = ref(database, 'goals');
-            const newGoalRef = push(goalsRef);
-            
-            await set(newGoalRef, {
-                name: value,
-                isDone: 'pending',
-                note: '',
-                timestamp: Date.now()
-            });
-
-            addForm.querySelector('input[type="text"]').value = '';
-        } catch (error) {
-            console.error('Error adding goal:', error);
-            alert('Failed to add goal. Please try again.');
-        }
-    } else {
+    if (value === '') {
         alert('Please enter your goal!');
+        return;
+    }
+
+    if (value.length > 60) {
+        alert('Goal title is too long! Maximum 60 characters allowed.');
+        return;
+    }
+
+    try {
+        const goalsRef = ref(database, 'goals');
+        const newGoalRef = push(goalsRef);
+
+        await set(newGoalRef, {
+            name: value,
+            isDone: 'pending',
+            note: '',
+            timestamp: Date.now()
+        });
+
+        addForm.querySelector('input[type="text"]').value = '';
+    } catch (error) {
+        console.error('Error adding goal:', error);
+        alert('Failed to add goal. Please try again.');
     }
 });
 
+// Handle list interactions
 list.addEventListener('click', async (e) => {
-    const listItem = e.target.closest('li');
-    if (!listItem) return;
+    const li = e.target.closest('li');
+    if (!li) return;
 
-    const goalId = listItem.dataset.id;
+    const goalId = li.dataset.id;
 
-    if (e.target.classList.contains('delete')) {
+    // Delete
+    if (e.target.className === 'delete') {
         if (confirm('Are you sure you want to delete this goal?')) {
             try {
                 const goalRef = ref(database, `goals/${goalId}`);
@@ -63,38 +71,42 @@ list.addEventListener('click', async (e) => {
                 alert('Failed to delete goal. Please try again.');
             }
         }
-    } else if (e.target.classList.contains('done')) {
-        toggleDone(goalId, listItem);
-    } else if (e.target.classList.contains('note-toggle')) {
-        toggleNoteVisibility(listItem, e.target);
+    }
+
+    // Toggle done
+    if (e.target.className === 'done') {
+        toggleDone(goalId, li);
+    }
+
+    // Toggle note visibility
+    if (e.target.className === 'note-toggle') {
+        toggleNoteVisibility(li, e.target);
     }
 });
 
-// Double-click event listener for editing the goal text
+// Edit goal text on double-click
 list.addEventListener('dblclick', (e) => {
-    if (e.target.classList.contains('name')) {
+    if (e.target.className === 'name') {
         editGoalText(e.target);
     }
 });
 
-// Event listener for tracking changes in the note textarea
-list.addEventListener('input', async (e) => {
-    if (e.target.className === 'note') {
-        const listItem = e.target.closest('li');
-        const goalId = listItem.dataset.id;
-        const noteValue = e.target.value;
-        
-        try {
-            const goalRef = ref(database, `goals/${goalId}/note`);
-            await set(goalRef, noteValue);
-            console.log('Note updated:', noteValue);
-        } catch (error) {
-            console.error('Error updating note:', error);
-        }
-    }
-});
+// Save note on blur
+list.addEventListener('blur', async (e) => {
+    if (!e.target.classList.contains('note')) return;
+    const listItem = e.target.closest('li');
+    const goalId = listItem.dataset.id;
+    const noteValue = e.target.value;
 
-// Function to create a goal item
+    try {
+        const goalRef = ref(database, `goals/${goalId}/note`);
+        await set(goalRef, noteValue);
+    } catch (error) {
+        console.error('Error updating note:', error);
+    }
+}, true);
+
+// Create goal item
 function createGoalItem(goalId, goalData) {
     const li = document.createElement('li');
     li.dataset.id = goalId;
@@ -127,7 +139,6 @@ function createGoalItem(goalId, goalData) {
     noteTextarea.value = goalData.note || '';
     noteTextarea.style.display = 'none';
 
-    // If note has content, show it automatically
     if (goalData.note) {
         noteTextarea.style.display = 'block';
         noteToggleSpan.textContent = 'Hide Note';
@@ -143,10 +154,10 @@ function createGoalItem(goalId, goalData) {
     return li;
 }
 
-// Function to toggle the visibility of the note textarea
+// Toggle note visibility
 function toggleNoteVisibility(li, noteToggle) {
     const noteTextarea = li.querySelector('.note');
-    if (noteTextarea.style.display === 'none' || noteTextarea.style.display === '') {
+    if (noteTextarea.style.display === 'none') {
         noteTextarea.style.display = 'block';
         noteToggle.textContent = 'Hide Note';
     } else {
@@ -155,38 +166,29 @@ function toggleNoteVisibility(li, noteToggle) {
     }
 }
 
-// Function to load goals from Firebase
+// Load goals
 function loadGoals() {
     const goalsRef = ref(database, 'goals');
-    
-    // Show loading message
+
     list.innerHTML = '<li style="text-align: center; color: #999;">Loading goals...</li>';
 
-    // Check localStorage for cached goals
     const cachedGoals = localStorage.getItem('goals');
     if (cachedGoals) {
         try {
-            const parsed = JSON.parse(cachedGoals);
-            goalsData = parsed;
-            // Display cached goals immediately
+            goalsData = JSON.parse(cachedGoals);
             renderAllGoals(goalsData);
         } catch (error) {
             console.error('Error parsing cached goals:', error);
         }
     }
 
-    // Listen to Firebase updates
     onValue(goalsRef, (snapshot) => {
         goalsData = snapshot.val() || {};
-        
-        // Save to localStorage for next load
         localStorage.setItem('goals', JSON.stringify(goalsData));
-        
-        // If search is active, use filtered view
+
         if (searchInput && searchInput.value.trim()) {
             renderListWithSearch(goalsData);
         } else {
-            // Otherwise show all goals
             renderAllGoals(goalsData);
         }
     }, (error) => {
@@ -195,27 +197,23 @@ function loadGoals() {
     });
 }
 
-// Function to render all goals
+// Render all goals
 function renderAllGoals(goals) {
     list.innerHTML = '';
-    
     if (!goals || Object.keys(goals).length === 0) {
         list.innerHTML = '<li style="text-align: center; color: #999;">No goals yet. Add your first goal!</li>';
         return;
     }
-
     Object.entries(goals).forEach(([goalId, goalData]) => {
-        const li = createGoalItem(goalId, goalData);
-        list.appendChild(li);
+        list.appendChild(createGoalItem(goalId, goalData));
     });
 }
 
-// Function to render filtered list based on search
+// Render filtered list
 function renderListWithSearch(data) {
     const query = searchInput.value.toLowerCase().trim();
     list.innerHTML = '';
 
-    // If no data, show a message
     if (!data || Object.keys(data).length === 0) {
         const noDataMsg = document.createElement('li');
         noDataMsg.textContent = 'No goals found.';
@@ -230,16 +228,12 @@ function renderListWithSearch(data) {
     Object.entries(data).forEach(([id, itemData]) => {
         const name = (itemData.name || '').toLowerCase();
         const note = (itemData.note || '').toLowerCase();
-
-        // Show all items if query is empty, otherwise filter
         if (!query || name.includes(query) || note.includes(query)) {
-            const li = createGoalItem(id, itemData);
-            list.appendChild(li);
+            list.appendChild(createGoalItem(id, itemData));
             matchCount++;
         }
     });
 
-    // Show "no results" message if no matches
     if (matchCount === 0 && query) {
         const noResults = document.createElement('li');
         noResults.textContent = `No results found for "${searchInput.value}"`;
@@ -249,63 +243,51 @@ function renderListWithSearch(data) {
     }
 }
 
-// Function to toggle the done state of a goal
-async function toggleDone(goalId, listItem) {
-    const states = ['pending', 'achieved'];
-    const currentState = listItem.dataset.done;
-    const nextState = states[(states.indexOf(currentState) + 1) % states.length];
+// Toggle done
+async function toggleDone(goalId, li) {
+    const currentState = li.dataset.done;
+    const nextState = currentState === 'achieved' ? 'pending' : 'achieved';
 
     try {
         const goalRef = ref(database, `goals/${goalId}/isDone`);
         await set(goalRef, nextState);
-        
-        // Update UI immediately
-        listItem.dataset.done = nextState;
-        const doneButton = listItem.querySelector('.done');
-        
-        if (nextState === 'achieved') {
-            doneButton.textContent = '✔️';
-            doneButton.style.backgroundColor = 'white';
-        } else if (nextState === 'pending') {
-            doneButton.textContent = '⏳';
-            doneButton.style.backgroundColor = 'white';
-        }
-        
-        console.log('New done state:', nextState);
+
+        li.dataset.done = nextState;
+        const doneButton = li.querySelector('.done');
+        doneButton.textContent = nextState === 'achieved' ? '✔️' : '⏳';
+        doneButton.style.backgroundColor = 'white';
     } catch (error) {
         console.error('Error updating done state:', error);
         alert('Failed to update goal status. Please try again.');
     }
 }
 
-// Function to edit the goal text on double-click
+// Edit goal text
 function editGoalText(nameSpan) {
     const listItem = nameSpan.closest('li');
     const goalId = listItem.dataset.id;
     const currentText = nameSpan.textContent;
+
     const input = document.createElement('input');
     input.type = 'text';
     input.value = currentText;
-    input.maxLength = 65; // Add character limit
+    input.maxLength = 60; // Character limit
 
     nameSpan.replaceWith(input);
     input.focus();
-    
+
+    // Enforce limit while typing
+    input.addEventListener('input', () => {
+        if (input.value.length > 60) input.value = input.value.slice(0, 60);
+    });
+
     input.addEventListener('blur', async () => {
-        const newValue = input.value.trim();
-        
-        if (newValue.length > 65) {
-            alert('Goal title is too long! Maximum 65 characters allowed.');
-            nameSpan.textContent = currentText;
-            input.replaceWith(nameSpan);
-            return;
-        }
-        
-        nameSpan.textContent = newValue || currentText;
+        const newValue = input.value.trim() || currentText;
+        nameSpan.textContent = newValue;
         nameSpan.className = 'name';
         input.replaceWith(nameSpan);
 
-        if (newValue && newValue !== currentText) {
+        if (newValue !== currentText) {
             try {
                 const goalRef = ref(database, `goals/${goalId}/name`);
                 await set(goalRef, newValue);
@@ -317,8 +299,6 @@ function editGoalText(nameSpan) {
     });
 
     input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            input.blur();
-        }
+        if (e.key === 'Enter') input.blur();
     });
 }
