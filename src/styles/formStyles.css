@@ -275,8 +275,7 @@ h1, h2 {
 }*/
 /* Optional: Active navigation link */
 #nav-container nav ul li a.active {
-    background-color: #f0f0f0; /* Light background for active link */
-    color:#5e366c; /* Change text color to match the bar */
+    color:#ffffff; /* Change text color to match the bar */
 }
 #nav-container nav ul li:hover {
     padding: 20px;

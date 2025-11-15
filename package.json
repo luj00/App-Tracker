@@ -15,7 +15,7 @@
     "goals",
     "reminders"
   ],
-  "author": "Your Name",
+  "author": "Lujain Mansour",
   "license": "ISC",
   "devDependencies": {
     "live-server": "^1.2.2",
