@@ -1,16 +1,26 @@
 {
-  "name": "project-luna",
+  "name": "app-tracker",
   "version": "1.0.0",
-  "description": "// Access next sibling element\r const sibling = bookList.nextElementSibling;",
-  "main": "favorits.js",
+  "description": "A personal tracker app for goals and reminders",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "sass": "sass --watch source/styles.scss:public/styles.css"
+    "sass": "sass --watch src/styles/styles.scss:src/styles/styles.css",
+    "start": "live-server src/pages",
+    "dev": "live-server"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "tracker",
+    "goals",
+    "reminders"
+  ],
+  "author": "Your Name",
   "license": "ISC",
   "devDependencies": {
+    "live-server": "^1.2.2",
     "sass": "^1.83.0"
+  },
+  "dependencies": {
+    "firebase": "^10.7.1"
   }
 }

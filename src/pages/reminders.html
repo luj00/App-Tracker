@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>My Reminders</title>
+    <link href="../styles/styles.css" rel="stylesheet" />
+    <link href="../styles/formStyles.css" rel="stylesheet" />
+
+</head>
+<body>
+    <!-- Starry Background Elements -->
+    <div id="stars"></div>
+    <div id="stars2"></div>
+    <div id="stars3"></div>
+
+    <!-- Title Text -->
+    <div id="title">
+        <span></span><br>
+        <span></span>
+    </div>
+
+    <div id="nav-container">
+        <nav>
+            <ul>
+                <li><a href="home.html">My profile</a></li>
+                <li><a href="goals.html">Goals</a></li>
+                <li><a href="reminders.html">Reminders</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <main id="wrapper">
+        <header>
+            <div id="page-banner">
+                <h1 class="title">Track Your Reminders</h1>
+                <p class="header">🤍List everything important you need to do!🤍</p>
+                <form id="search">
+                    <input type="text" id="input" placeholder="Search reminders..." />
+                </form>
+            </div>
+        </header>
+        <section id="list">
+            <h2 class="title2">My Reminders</h2>
+            <ul>
+                <!-- Reminder items will be dynamically added here -->
+            </ul>
+        </section>
+        <section>
+            <form id="add">
+                <input type="text" id="input" name="name" placeholder="Add a reminder..." />
+                <button type="submit">Add</button>
+            </form>
+        </section>
+    </main>
+
+    <!-- Include reminders.js -->
+<script type="module" src="../js/remiders.js"></script>
+</body>
+</html>
+
